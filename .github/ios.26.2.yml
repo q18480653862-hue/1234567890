@@ -1,0 +1,37 @@
+# 工作流名称，随便写，你能看懂就行
+name: 一键提取iOS26.0/26.2开发者镜像
+# 手动触发：只有你点Run workflow才会运行，不会自动执行
+on:
+  workflow_dispatch:
+    # 可选版本，让你在网页上直接选26.0还是26.2，不用改代码
+    inputs:
+      ios_version:
+        description: '选择要提取的iOS版本'
+        required: true
+        default: '26.2'
+        type: choice
+        options:
+          - 26.0
+          - 26.2
+
+jobs:
+  extract_ios_mirror:
+    # 使用GitHub官方macOS 15托管运行器，预装Xcode26，无额度限制
+    runs-on: macos-15
+    steps:
+      - name: 切换到官方预装的Xcode26版本
+        run: sudo xcode-select -s /Applications/Xcode_26.app/Contents/Developer
+        
+      - name: 定位并复制iOS开发者镜像+签名文件
+        run: |
+          IOS_VER=${{ github.event.inputs.ios_version }}
+          mkdir -p ~/iOS-Mirror/$IOS_VER
+          cp /Applications/Xcode_26.app/Contents/Developer/Platforms/iPhoneOS.platform/DeviceSupport/$IOS_VER/DeveloperDiskImage.dmg ~/iOS-Mirror/$IOS_VER/
+          cp /Applications/Xcode_26.app/Contents/Developer/Platforms/iPhoneOS.platform/DeviceSupport/$IOS_VER/DeveloperDiskImage.dmg.signature ~/iOS-Mirror/$IOS_VER/
+          ls -l ~/iOS-Mirror/$IOS_VER/
+          
+      - name: 打包镜像文件，供下载
+        uses: actions/upload-artifact@v4
+        with:
+          name: iOS-${{ github.event.inputs.ios_version }}-DeveloperDiskImage
+          path: ~/iOS-Mirror/${{ github.event.inputs.ios_version }}/
