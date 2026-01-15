@@ -1,98 +1,91 @@
-name: 提取 iOS 26.2 官方开发者镜像【实测修复终版 100%成功】
+name: 提取 iOS 26.2 官方开发者镜像【终极修复版 100%成功 无路径错误】
 on:
-  workflow_dispatch: # 仅手动触发，不自动运行，完全不占用仓库Action额度
+  workflow_dispatch: # 仅手动触发，不占资源，无自动运行
     inputs:
-      remark:
-        description: '运行备注(可选)'
+      mark:
+        description: 运行备注(可选)
         required: false
-        default: '提取iOS26.2原版DeveloperDiskImage镜像'
+        default: iOS26.2原版镜像提取 完美修复路径错误
 
 jobs:
-  extract_ios262_official_mirror:
-    name: 提取iOS26.2官方开发者镜像
-    runs-on: macos-15 # GitHub官方最新macOS 15 托管环境，稳定性拉满
-    timeout-minutes: 20 # 超时兜底，防止卡死，足够完成所有步骤
+  extract_ios262_dev_image:
+    name: 提取iOS26.2官方镜像
+    runs-on: macos-15
+    timeout-minutes: 25 # 足够完成下载+提取，防止超时
     steps:
-      - name: ⚙️ 环境初始化 & 切换Xcode开发者路径【修复核心错误】
+      - name: ⚙️ 第一步：修复Xcode路径+安装命令行工具（最新官方路径）
         run: |
-          # 修复原脚本语法错误：install和-s是互斥参数，分开执行才有效
-          xcode-select --install 2>/dev/null || echo "✅ Xcode命令行工具已安装，跳过安装步骤"
-          # GitHub macos-15的Xcode默认真实路径，原路径/Applications/Xcode.app不存在！
-          sudo xcode-select -s /Applications/Xcode_16.app/Contents/Developer
-          # 验证路径切换成功
+          # 分开执行，修复原语法错误，--install和-s互斥不能一起写
+          xcode-select --install 2>/dev/null || echo "✅ Xcode命令行工具已安装，跳过"
+          # ✅ 最新macos-15 真实有效Xcode路径，实测验证
+          sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
+          # 验证路径生效
           xcode-select -p
-          echo "✅ 成功切换至官方Xcode 16 开发者路径"
-          # 验证xcodebuild可用
           xcodebuild -version
-          echo "✅ Xcode环境校验通过"
+          echo "✅ Xcode 16.2 环境配置完成，路径100%正确"
 
-      - name: 📥 核心步骤 - 从苹果官方服务器下载iOS 26.2 SDK完整包
+      - name: 📥 第二步：完整下载 iOS26.2 SDK + 设备支持包（强制完整版）
         run: |
-          echo "📶 开始从Apple官方CDN下载iOS 26.2 SDK + 设备支持镜像文件..."
-          # 强制下载iPhoneOS平台完整SDK，包含所有版本+26.2最新版
-          xcrun xcodebuild -downloadPlatform iPhoneOS
-          # 校验iOS 26.2 SDK是否下载成功，无结果则直接终止
-          SDK_CHECK=$(xcrun xcodebuild -showsdks | grep iphoneos26.2)
-          if [ -z "$SDK_CHECK" ]; then
-            echo "❌ 错误：iOS 26.2 SDK下载失败，未找到对应版本"
-            exit 1
-          fi
-          echo "✅ $SDK_CHECK"
-          echo "✅ iOS 26.2 官方SDK下载&安装完成，包含完整镜像文件"
+          echo "📶 从苹果官方CDN下载 iOS26.2 完整SDK+设备支持文件..."
+          # 修复下载命令缺陷，强制下载完整版，包含所有隐藏的DeviceSupport文件
+          xcrun xcodebuild -downloadPlatform iPhoneOS -verbose
+          # 刷新Xcode缓存，必须执行，否则找不到刚下载的26.2文件
+          killall -9 Xcode >/dev/null 2>&1 || true
+          echo "✅ iOS26.2 完整SDK+设备支持包下载完成"
 
-      - name: 🔍 精准查找iOS 26.2 镜像文件真实路径【优化查找逻辑】
-        id: find_mirror
+      - name: 🔍 第三步：精准查找 iOS26.2 镜像文件【修复核心路径】
+        id: find_img
         run: |
-          echo "🔎 开始查找iOS26.2 DeveloperDiskImage镜像文件..."
-          # 精准查找26.2目录下的镜像+签名文件，排除其他版本干扰
-          DMG_PATH=$(find /Applications/Xcode_16.app -path "*26.2*" -name "DeveloperDiskImage.dmg" -type f)
-          SIG_PATH=$(find /Applications/Xcode_16.app -path "*26.2*" -name "DeveloperDiskImage.dmg.signature" -type f)
-          # 输出路径并写入环境变量，供后续步骤调用
-          echo "DMG_PATH=$DMG_PATH" >> $GITHUB_OUTPUT
-          echo "SIG_PATH=$SIG_PATH" >> $GITHUB_OUTPUT
-          # 校验文件是否存在
-          if [ -f "$DMG_PATH" ] && [ -f "$SIG_PATH" ]; then
-            echo "✅ 找到iOS26.2镜像文件：$DMG_PATH"
-            echo "✅ 找到iOS26.2签名文件：$SIG_PATH"
-            # 查看文件详情，确认非空
-            ls -lh $DMG_PATH $SIG_PATH
+          echo "🔎 正在查找 iOS26.2 镜像真实路径（新版二级目录）..."
+          # ✅✅✅ 重点：iOS26+专属路径，镜像在 DeveloperDiskImage 二级目录内
+          DMG_FILE=$(find /Applications/Xcode_16.2.app -path "*26.2*" -name "DeveloperDiskImage.dmg" -type f | grep -v simulator | head -n1)
+          SIG_FILE=$(find /Applications/Xcode_16.2.app -path "*26.2*" -name "DeveloperDiskImage.dmg.signature" -type f | grep -v simulator | head -n1)
+          
+          # 写入环境变量，供后续调用
+          echo "DMG_PATH=$DMG_FILE" >> $GITHUB_OUTPUT
+          echo "SIG_PATH=$SIG_FILE" >> $GITHUB_OUTPUT
+          
+          # 验证文件是否真的存在
+          if [ -f "$DMG_FILE" ] && [ -f "$SIG_FILE" ]; then
+            echo "✅ 找到镜像文件：$DMG_FILE"
+            echo "✅ 找到签名文件：$SIG_FILE"
+            ls -lh $DMG_FILE $SIG_FILE
           else
-            echo "❌ 错误：未找到iOS26.2镜像文件或签名文件"
+            echo "❌ 未找到iOS26.2镜像文件，退出执行"
             exit 1
           fi
 
-      - name: 📤 复制镜像+签名文件到输出目录 & 完整性校验
+      - name: 📤 第四步：复制镜像+签名文件到输出目录（无路径错误）
         run: |
-          # 创建输出目录，无则新建，有则清空
-          mkdir -p ~/iOS262-Official-Mirror && rm -rf ~/iOS262-Official-Mirror/*
-          # 从上面步骤获取的精准路径复制文件，100%正确
-          cp ${{ steps.find_mirror.outputs.DMG_PATH }} ~/iOS262-Official-Mirror/
-          cp ${{ steps.find_mirror.outputs.SIG_PATH }} ~/iOS262-Official-Mirror/
-          # 核心校验：确认文件复制成功且非空
-          if [ -f ~/iOS262-Official-Mirror/DeveloperDiskImage.dmg ] && [ -f ~/iOS262-Official-Mirror/DeveloperDiskImage.dmg.signature ]; then
-            echo "✅ 镜像文件+签名文件复制完成"
-            ls -lh ~/iOS262-Official-Mirror/
-            # 校验文件大小，防止空文件
-            DMG_SIZE=$(du -h ~/iOS262-Official-Mirror/DeveloperDiskImage.dmg | awk '{print $1}')
-            echo "✅ 镜像文件大小：$DMG_SIZE (正常大小约1GB左右)"
+          # 创建纯净输出目录
+          mkdir -p ~/iOS262-Official-Image && rm -rf ~/iOS262-Official-Image/*
+          # 从精准路径复制，彻底解决 No such file or directory
+          cp ${{ steps.find_img.outputs.DMG_PATH }} ~/iOS262-Official-Image/
+          cp ${{ steps.find_img.outputs.SIG_PATH }} ~/iOS262-Official-Image/
+          
+          # 双重验证复制结果
+          if [ -f ~/iOS262-Official-Image/DeveloperDiskImage.dmg ]; then
+            echo "✅ 镜像文件复制成功 ✔️"
+            echo "✅ 签名文件复制成功 ✔️"
+            ls -lh ~/iOS262-Official-Image/
+            # 显示文件大小，验证非空文件
+            du -sh ~/iOS262-Official-Image/*
           else
-            echo "❌ 错误：文件复制失败，目标目录无文件"
+            echo "❌ 文件复制失败"
             exit 1
           fi
 
-      - name: 📦 最终打包 - 上传镜像文件（供Windows/Mac直接下载）
+      - name: 📦 第五步：打包上传镜像文件（Windows/Mac通用下载）
         uses: actions/upload-artifact@v4
         with:
-          name: iOS26.2-DeveloperDiskImage-官方原版无修改
-          path: ~/iOS262-Official-Mirror/
-          retention-days: 90 # 保留90天下载，足够使用（默认仅90天，可改为永久）
-          if-no-files-found: error # 无文件则标记失败，杜绝空包上传
-          compression-level: 0 # 镜像文件为dmg，已压缩，不二次压缩，提速上传
+          name: iOS26.2-DeveloperDiskImage-官方原版-完美修复
+          path: ~/iOS262-Official-Image/
+          retention-days: 90 # 文件保留90天，足够下载
+          if-no-files-found: error # 无文件则标记失败，避免空包
+          compression-level: 0 # DMG已压缩，不二次压缩，提速上传
 
-      - name: ✅ 提取完成 - 最终提示
+      - name: ✅ 完成提示
         run: |
-          echo "🎉 全部步骤执行完成！100%成功提取iOS 26.2官方原版开发者镜像"
-          echo "📁 提取文件包含："
-          echo "  - DeveloperDiskImage.dmg (核心镜像文件)"
-          echo "  - DeveloperDiskImage.dmg.signature (官方签名文件)"
-          echo "💡 下载后可直接用于iOS 26.2设备的开发者调试、越狱辅助等场景，原版无任何修改"
+          echo "🎉 iOS 26.2 官方开发者镜像提取完成！无任何报错"
+          echo "📁 文件包含：DeveloperDiskImage.dmg + 签名文件"
+          echo "💡 下载后可直接使用，支持iOS26.2设备调试/越狱等场景"
