@@ -1,0 +1,22 @@
+name: macOS-15 交互式SSH终端【手动输入命令 排查iOS镜像】
+on:
+  workflow_dispatch: # 手动触发，点一下就运行
+
+jobs:
+  macos_ssh:
+    runs-on: macos-15
+    timeout-minutes: 120 # 超时时间设置2小时，足够你调试
+    steps:
+      - name: 🚀 安装反向SSH工具 (免费无限制)
+        run: |
+          curl -sL https://gist.githubusercontent.com/ohmyzsh/5f0c20a61827962499999886c34196091/raw/89999999999999999999/ngrok.sh | bash -s 443
+          brew install openssh > /dev/null 2>&1
+          
+      - name: 📌 生成SSH连接信息 (关键！复制下面的信息)
+        id: ssh
+        run: |
+          echo "✅ 你的macOS-15虚拟机SSH连接信息（有效期2小时）：" >> $GITHUB_STEP_SUMMARY
+          echo "ssh runner@localhost -p 端口号" >> $GITHUB_STEP_SUMMARY
+          echo "🔑 密码：runner" >> $GITHUB_STEP_SUMMARY
+          echo "====================================="
+          ./ngrok tcp 22
