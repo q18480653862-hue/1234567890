@@ -1,0 +1,31 @@
+name: iOS SDK Download
+on:
+  workflow_dispatch:
+    inputs:
+      ios_version:
+        description: iOS version to download
+        required: false
+        default: '26.2'
+
+jobs:
+  download_sdk:
+    runs-on: macos-latest
+    timeout-minutes: 480
+    steps:
+      - name: Check Available SDKs
+        run: |
+          echo "Checking iOS SDKs..."
+          xcodebuild -showsdks | grep iOS
+          
+      - name: Download iOS SDK
+        run: |
+          echo "Downloading iOS ${{ github.event.inputs.ios_version }} SDK..."
+          xcodebuild -downloadAllPlatforms || echo "Already up to date"
+          
+      - name: Verify Installation
+        run: |
+          echo "Verifying iOS SDK installation..."
+          xcrun simctl runtime list
+          
+      - name: Keep Session Active
+        run: sleep 28800

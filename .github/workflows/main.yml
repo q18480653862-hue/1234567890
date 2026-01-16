@@ -1,8 +1,0 @@
-jobs:
-  macos_ssh:
-    runs-on: macos-15
-    steps:
-      - name: 开启调试SSH
-        uses: actions/debug@v1  # 官方调试Action，会输出SSH连接信息
-      - name: 保持会话（防止立即退出）
-        run: sleep 3600  # 维持60分钟，足够操作
