@@ -1,9 +1,9 @@
-name: iOS 26.2 开发者磁盘镜像下载
+name: iOS 26.2 Developer Disk Image Download
 on:
   workflow_dispatch:
     inputs:
       ios_version:
-        description: 'iOS版本 (例如: 26.2)'
+        description: 'iOS version (e.g. 26.2)'
         required: true
         default: '26.2'
 
