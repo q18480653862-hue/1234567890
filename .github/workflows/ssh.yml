@@ -1,30 +1,38 @@
-name: Direct SSH Terminal to macOS
-on: [workflow_dispatch]
+name: macOS SSH Terminal
+on:
+  workflow_dispatch:
+    inputs:
+      session_duration:
+        description: 'Session duration in minutes'
+        required: false
+        default: '480'
 
 jobs:
-  ssh_terminal:
+  ssh_session:
     runs-on: macos-latest
-    timeout-minutes: 480
+    timeout-minutes: 500
     steps:
-      - name: Display System Information
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: macOS System Information
         run: |
-          echo "================================================"
-          echo "macOS SSH Terminal Ready for iOS Development"
-          echo "================================================"
-          echo ""
-          echo "System Information:"
+          echo "System Version:"
           sw_vers
-          echo ""
-          echo "Xcode Information:"
-          xcode-select --version
-          xcodebuild -version
-          echo ""
-          echo "iOS SDK Versions:"
-          xcodebuild -showsdks | grep iphoneos
-          echo ""
-          echo "================================================"
-          echo "Terminal is ready!"
-          echo "================================================"
+          echo "Architecture:"
+          uname -m
           
-      - name: Keep Session Open for 8 Hours
+      - name: Xcode Information
+        run: |
+          echo "Xcode Path:"
+          xcode-select -p
+          echo "Xcode Version:"
+          xcodebuild -version
+          
+      - name: iOS SDK Check
+        run: |
+          echo "Available iOS SDKs:"
+          xcodebuild -showsdks | grep iOS
+          
+      - name: Keep SSH Session Alive
         run: sleep 28800
