@@ -1,5 +1,5 @@
 name: macOS Latest iOS 26.2 Development Environment Setup
-on:
+'on':
   workflow_dispatch:
 
 jobs:
