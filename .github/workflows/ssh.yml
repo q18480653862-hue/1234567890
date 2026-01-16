@@ -1,22 +1,88 @@
-name: macOS-15 交互式SSH终端【手动输入命令 排查iOS镜像】
+name: macOS-15 交互式SSH终端【iOS开发镜像下载】
 on:
   workflow_dispatch: # 手动触发，点一下就运行
 
 jobs:
-  macos_ssh:
+  macos_ios_setup:
     runs-on: macos-15
-    timeout-minutes: 120 # 超时时间设置2小时，足够你调试
+    timeout-minutes: 360 # 6小时，足够下载和处理镜像
     steps:
-      - name: 🚀 安装反向SSH工具 (免费无限制)
+      - name: 📱 检查iOS可用版本和镜像
         run: |
-          curl -sL https://gist.githubusercontent.com/ohmyzsh/5f0c20a61827962499999886c34196091/raw/89999999999999999999/ngrok.sh | bash -s 443
-          brew install openssh > /dev/null 2>&1
+          echo "=== 检查Xcode版本 ==="
+          xcode-select --version
           
-      - name: 📌 生成SSH连接信息 (关键！复制下面的信息)
-        id: ssh
+          echo "=== 检查可用的iOS运行时 ==="
+          xcrun simctl runtime list
+          
+          echo "=== 列出已安装的iOS SDK ==="
+          ls -la /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/ 2>/dev/null || echo "未找到SDK目录"
+          
+      - name: 🔍 搜索iOS 26.2开发者磁盘镜像
         run: |
-          echo "✅ 你的macOS-15虚拟机SSH连接信息（有效期2小时）：" >> $GITHUB_STEP_SUMMARY
-          echo "ssh runner@localhost -p 端口号" >> $GITHUB_STEP_SUMMARY
-          echo "🔑 密码：runner" >> $GITHUB_STEP_SUMMARY
-          echo "====================================="
-          ./ngrok tcp 22
+          echo "=== 检查macOS系统版本 ==="
+          sw_vers
+          
+          echo "=== 获取Xcode可用的SDK版本 ==="
+          xcodebuild -showsdks | grep iphoneos
+          
+          echo "=== 检查设备支持目录 ==="
+          ls -la ~/Library/Developer/Xcode/iOS\ DeviceSupport/ 2>/dev/null || echo "尚无下载的设备支持"
+          
+      - name: 📥 下载iOS 26.2开发工具（如可用）
+        run: |
+          echo "=== 尝试更新Xcode组件 ==="
+          sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer
+          sudo xcode-select --reset
+          
+          echo "=== 列出可下载的SDK ==="
+          xcodebuild -downloadAllPlatforms || echo "已是最新版本或无新版本可下载"
+          
+      - name: 💾 生成镜像信息报告
+        run: |
+          {
+            echo "# iOS 26.2 开发环境检查报告"
+            echo ""
+            echo "## 系统信息"
+            sw_vers
+            echo ""
+            echo "## Xcode信息"
+            xcode-select -p
+            xcode-select --version
+            echo ""
+            echo "## iOS SDK列表"
+            xcodebuild -showsdks
+            echo ""
+            echo "## 可用运行时"
+            xcrun simctl runtime list
+            echo ""
+            echo "## Xcode组件位置"
+            ls -lh /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/ 2>/dev/null || echo "未找到"
+          } > ios_setup_report.txt
+          
+          cat ios_setup_report.txt
+          
+      - name: 📤 上传报告为Artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-setup-report
+          path: ios_setup_report.txt
+          retention-days: 7
+          
+      - name: 🚀 启动SSH服务（可选调试）
+        if: always()
+        run: |
+          echo "如需交互式调试，运行以下命令："
+          echo "ssh runner@localhost -p 22"
+          echo "密码: runner"
+          
+          # 启用SSH
+          sudo systemsetup -setremotelogin on
+          sleep 5
+          
+          # 显示SSH状态
+          sudo systemsetup -getremotelogin
+          
+      - name: ⏱️ 保持会话（2小时调试窗口）
+        run: sleep 7200
