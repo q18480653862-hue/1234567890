@@ -1,4 +1,4 @@
-name: macOS最新版【iOS 26.2开发环境配置】
+name: macOS Latest iOS 26.2 Development Environment Setup
 on:
   workflow_dispatch:
 
