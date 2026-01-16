@@ -1,22 +1,25 @@
-name: macOS SSH Terminal
+name: macOS SSH Debug Terminal
 on:
   workflow_dispatch:
 
 jobs:
-  ssh_terminal:
-    runs-on: macos-latest
-    timeout-minutes: 480
+  macos_ssh:
+    runs-on: macos-15
+    timeout-minutes: 120
     steps:
-      - name: System Information
+      - name: Enable SSH Debugging
+        uses: actions/debug@v1
+        
+      - name: Show macOS Info
         run: |
-          echo "macOS System Info:"
+          echo "macOS Version:"
           sw_vers
           echo ""
           echo "Xcode Version:"
           xcodebuild -version
           echo ""
-          echo "Available iOS SDKs:"
+          echo "iOS SDKs:"
           xcodebuild -showsdks | grep iOS
           
       - name: Keep Session Active
-        run: sleep 28800
+        run: sleep 3600
