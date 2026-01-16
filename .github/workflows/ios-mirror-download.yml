@@ -9,7 +9,7 @@ on:
 
 jobs:
   download_ios_mirror:
-    runs-on: macos-15
+    runs-on: macos-latest
     timeout-minutes: 480 # 8小时
     steps:
       - name: 📊 显示系统信息
@@ -24,7 +24,20 @@ jobs:
           echo "=== 磁盘空间 ==="
           df -h
           
-      - name: 🔍 搜索iOS ${{ github.event.inputs.ios_version }} SDK
+      - name: � 更新开发工具到最新版本
+        run: |
+          echo "=== 更新Xcode命令行工具 ==="
+          sudo xcode-select --reset
+          sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer
+          
+          echo "=== 验证更新后的工具版本 ==="
+          xcode-select --version
+          xcodebuild -version
+          
+          echo "=== 更新brew包管理器 ==="
+          brew update || true
+          
+      - name: �🔍 搜索iOS ${{ github.event.inputs.ios_version }} SDK
         run: |
           echo "正在搜索iOS ${{ github.event.inputs.ios_version }}..."
           

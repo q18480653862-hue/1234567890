@@ -1,16 +1,24 @@
-name: macOS-15 交互式SSH终端【iOS开发镜像下载】
+name: macOS最新版【iOS 26.2开发环境配置】
 on:
   workflow_dispatch: # 手动触发，点一下就运行
 
 jobs:
   macos_ios_setup:
-    runs-on: macos-15
+    runs-on: macos-latest
     timeout-minutes: 360 # 6小时，足够下载和处理镜像
     steps:
       - name: 📱 检查iOS可用版本和镜像
         run: |
+          echo "=== macOS 系统版本 ==="
+          sw_vers
+          
           echo "=== 检查Xcode版本 ==="
           xcode-select --version
+          xcodebuild -version
+          
+          echo "=== 更新工具链到最新 ==="
+          sudo xcode-select --reset
+          sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer
           
           echo "=== 检查可用的iOS运行时 ==="
           xcrun simctl runtime list
